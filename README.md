@@ -46,6 +46,10 @@ Forwarding   https://abcd-12-34-56-78.ngrok-free.app -> http://localhost:3000
 3. **Slash Commands**에서 `/hello` 명령이 있다면:
    - 해당 명령 클릭 후 **Request URL**에 같은 주소  
      `https://여기복사한주소.ngrok-free.app/slack/events` 입력 후 저장
+4. **Interactivity & Shortcuts** (버튼·날짜 선택 등 사용 시 필수):
+   - 왼쪽 메뉴 **Interactivity & Shortcuts** 클릭
+   - **Interactivity**를 **On**으로 설정
+   - **Request URL**에 `https://여기복사한주소.ngrok-free.app/slack/events` 입력 후 **Save**
 
 > **주의:** ngrok을 다시 실행하면 URL이 바뀝니다. 무료 계정은 매번 새 주소가 부여되므로, 바뀔 때마다 Slack 앱의 Request URL을 새 주소로 다시 설정해야 합니다.
 

@@ -6,13 +6,68 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 
-app.command("/hello", async ({ command, ack }) => {
-  console.log("[ /hello ] 요청 수신:", command.user_id, command.channel_id);
-  await ack({
-    response_type: "ephemeral",
-    text: `안녕하세요 <@${command.user_id}> 👋`,
+app.message("hello", async ({ message, say }) => {
+  await say({
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `Hey there <@${message.user}>!`,
+        },
+        accessory: {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Click Me",
+          },
+          action_id: "button_click",
+        },
+      },
+    ],
+    text: `Hey there <@${message.user}>!`,
   });
-  console.log("[ /hello ] 응답 전송 완료");
+});
+
+// 누군가 메시지에 📅(calendar) 이모지 리액션을 달면 → 날짜 선택 UI 보여줌
+app.event("reaction_added", async ({ event, say }) => {
+  if (event.reaction === "calendar") {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    await say({
+      channel: event.channel,
+      text: "Pick a date for me to remind you",
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: "Pick a date for me to remind you",
+          },
+          accessory: {
+            type: "datepicker",
+            action_id: "datepicker_remind",
+            initial_date: today,
+            placeholder: {
+              type: "plain_text",
+              text: "Select a date",
+            },
+          },
+        },
+      ],
+    });
+  }
+});
+
+// 날짜 선택 시 동작 (Interactivity & Shortcuts Request URL 설정 필요)
+app.action("datepicker_remind", async ({ ack, body, say }) => {
+  await ack();
+  const selectedDate = body.actions?.[0]?.selected_date;
+  if (selectedDate) {
+    await say({
+      channel: body.channel?.id,
+      text: `<@${body.user.id}> 리마인드 날짜: ${selectedDate} 로 저장했어요 📅`,
+    });
+  }
 });
 
 (async () => {
