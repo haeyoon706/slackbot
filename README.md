@@ -1,78 +1,87 @@
 # slackbot
 
-Slack Bolt 봇. `/hello`, 예약, 리마인드(날짜 선택), `/ticket` 모달 등.
+Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모달 등을 지원합니다.
+
+## 기능 요약
+
+| 기능 | 트리거 | 동작 |
+|------|--------|------|
+| 인사 + 버튼 | 채널에 **hello** 입력 | Block Kit 버튼이 있는 인사 메시지 |
+| 예약 발송 | **예약** 또는 **wake me up** (+ 내용) 입력 | 1분 뒤 해당 내용으로 메시지 예약 (`chat.scheduleMessage`) |
+| 리마인드 날짜 | 메시지에 **📅** 리액션 | 날짜 선택 UI → 선택 시 채널에 응답 |
+| 티켓 모달 | **/ticket** 슬래시 명령 | 이메일 입력 모달 → 검증(ack) 후 채널에 안내 |
+| Open Modal | **Shortcut** (메시지 ⋮ 또는 검색/⚡) | 간단한 모달 열기 |
 
 ## 프로젝트 구조
 
-- **`app.js`** — 앱 생성, 핸들러 등록, 서버 시작만 담당
-- **`handlers/`** — 기능별로 나눈 리스너
-  - `schedule.js` — "예약" / "wake me up" → `chat.scheduleMessage`
+- **`app.js`** — 앱 생성, 핸들러 등록, 서버 시작
+- **`handlers/`** — 기능별 리스너
+  - `schedule.js` — 예약 / wake me up → `chat.scheduleMessage`
   - `hello.js` — "hello" 메시지 → Block Kit 버튼
-  - `reminder.js` — 📅 리액션 → 날짜 선택 UI, 날짜 선택 액션
+  - `reminder.js` — 📅 리액션 → 날짜 선택 UI 및 액션
   - `ticket.js` — `/ticket` 모달, 이메일 검증(ack)
+  - `shortcut.js` — Shortcut `open_modal` → 모달 열기
 
-새 기능 추가 시 `handlers/` 에 파일 만들고 `export function register(app) { ... }` 로 등록한 뒤 `app.js` 에서 `registerXXX(app)` 호출.
+새 기능: `handlers/` 에 `export function register(app) { ... }` 추가 후 `app.js` 에서 `registerXXX(app)` 호출.
 
-## 로컬에서 ngrok으로 테스트하기
+---
 
-### 1. ngrok 설치
+## 로컬 실행 (ngrok)
 
-**macOS (Homebrew):**
-```bash
-brew install ngrok
-```
-
-**또는** [ngrok 다운로드](https://ngrok.com/download)에서 설치 후 `ngrok` 실행 파일을 PATH에 넣기.
-
-### 2. 슬랙봇 실행
+### 1. 실행
 
 ```bash
-npm start
+npm start          # 포트 3000
+ngrok http 3000    # 새 터미널에서
 ```
 
-봇이 **포트 3000**에서 대기합니다.
+ngrok에 나온 **https 주소**를 복사해 두세요.
 
-### 3. ngrok 터널 열기
+### 2. Slack 앱 설정
 
-**새 터미널**을 열고:
+[api.slack.com/apps](https://api.slack.com/apps) → 사용 앱 선택 후 아래를 모두 설정합니다.  
+Request URL은 **`https://복사한주소/slack/events`** 로 통일합니다.
 
-```bash
-ngrok http 3000
-```
+| 항목 | 설정 |
+|------|------|
+| **Event Subscriptions** | Enable On, Request URL 등록, **Subscribe to bot events** 에 `message.channels`, `reaction_added` 추가 |
+| **Slash Commands** | `/ticket` (필요 시 `/hello`) 생성, Request URL 동일 |
+| **Interactivity & Shortcuts** | On, Request URL 동일 (버튼·날짜 선택·모달 제출용) |
+| **Shortcuts** | **Create New Shortcut** → Name/Description 입력, **Callback ID**: `open_modal` (Global 또는 Messages 중 선택) |
+| **OAuth & Permissions** | Bot Token Scopes: `chat:write`, `channels:history`, `commands` 등 필요 범위 추가 후 **Reinstall to Workspace** |
 
-출력에 다음처럼 **HTTPS URL**이 나옵니다:
-```
-Forwarding   https://abcd-12-34-56-78.ngrok-free.app -> http://localhost:3000
-```
+봇을 테스트할 채널에 **앱 초대**해 두세요.
 
-이 `https://...ngrok-free.app` 주소를 복사합니다.
+> ngrok 재시작 시 URL이 바뀌므로, Slack 앱의 Request URL을 새 주소로 다시 넣어야 합니다.
 
-### 4. Slack 앱 설정에서 Request URL 등록
+---
 
-1. [Slack API 앱 목록](https://api.slack.com/apps) 접속 후 사용 중인 앱 선택
-2. 왼쪽 메뉴에서 **Event Subscriptions** 클릭
-   - **Enable Events**를 On으로 두고
-   - **Request URL**에 `https://여기복사한주소.ngrok-free.app/slack/events` 입력
-   - 저장 후 URL 검증(Verified)이 되면 완료
-3. **Slash Commands**에서 `/hello` 명령이 있다면:
-   - 해당 명령 클릭 후 **Request URL**에 같은 주소  
-     `https://여기복사한주소.ngrok-free.app/slack/events` 입력 후 저장
-4. **Interactivity & Shortcuts** (버튼·날짜 선택 등 사용 시 필수):
-   - 왼쪽 메뉴 **Interactivity & Shortcuts** 클릭
-   - **Interactivity**를 **On**으로 설정
-   - **Request URL**에 `https://여기복사한주소.ngrok-free.app/slack/events` 입력 후 **Save**
+## 테스트 방법
 
-> **주의:** ngrok을 다시 실행하면 URL이 바뀝니다. 무료 계정은 매번 새 주소가 부여되므로, 바뀔 때마다 Slack 앱의 Request URL을 새 주소로 다시 설정해야 합니다.
+아래는 봇이 **초대된 채널**에서 확인하는 방법입니다.
 
-### 5. 테스트
+1. **hello**  
+   채널에 `hello` 입력 → "Hey there @you" + **Click Me** 버튼이 나오는지 확인.
 
-Slack 채널에서 `/hello` 입력 후 전송하면 봇이 인사 메시지를 보냅니다.
+2. **예약**  
+   `예약 회의 리마인드` 또는 `wake me up` 입력 → "1분 뒤에 다음 내용으로 보낼게요" 응답 후, 1분 뒤 예약 메시지가 오는지 확인.
+
+3. **리마인드(날짜)**  
+   아무 메시지에 **📅** 리액션 추가 → "Pick a date for me to remind you" + 날짜 선택 UI → 날짜 선택 시 "리마인드 날짜: YYYY-MM-DD 로 저장했어요" 응답 확인.  
+   (Event Subscriptions에 `reaction_added` 필요.)
+
+4. **/ticket**  
+   `/ticket` 입력 → 티켓 모달에서 이메일 입력 후 제출 → 유효하면 "티켓이 등록되었어요" 채널 메시지, 잘못된 이메일이면 모달에 에러 표시되는지 확인.
+
+5. **Open Modal (Shortcut)**  
+   - **Message Shortcut**: 메시지에 마우스 올리고 **⋮** → **앱에 연결** → **Open Modal** 선택 → 모달이 열리는지 확인.  
+   - **Global Shortcut** (API에서 Global로 등록한 경우): Slack 검색 또는 입력창 옆 **⚡** → **Open Modal** 선택 → 모달이 열리는지 확인.
 
 ---
 
 ## 환경 변수
 
-`.env` 파일에 다음을 설정:
+`.env`:
 
 - `SLACK_BOT_TOKEN` — Bot User OAuth Token (xoxb-...)
 - `SLACK_SIGNING_SECRET` — Signing Secret
