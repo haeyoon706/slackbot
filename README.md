@@ -11,7 +11,7 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
 | 리마인드 날짜 | 메시지에 **📅** 리액션 | 날짜 선택 UI → 선택 시 채널에 응답 |
 | 티켓 모달 | **/ticket** 슬래시 명령 | 이메일 입력 모달 → 검증(ack) 후 채널에 안내 |
 | Open Modal | **Shortcut** (메시지 ⋮ 또는 검색/⚡) | 간단한 모달 열기 |
-| 모달 데모 | **/modal-demo** 슬래시 명령 | Opening modals 문서 예시: section + 버튼 + multiline input, 제출 시 채널에 전송 |
+| 모달 데모 | **/modal-demo** 슬래시 명령 | 모달 열기 → **[Update]** `views.update` / **[Push]** `views.push` (닫으면 1번 복귀), Submit 시 채널 전송 |
 
 ## 프로젝트 구조
 
@@ -22,7 +22,7 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
   - `reminder.js` — 📅 리액션 → 날짜 선택 UI 및 액션
   - `ticket.js` — `/ticket` 모달, 이메일 검증(ack)
   - `shortcut.js` — Shortcut `open_modal` → 모달 열기
-  - `modal.js` — `/modal-demo` → Opening modals 문서 예시 모달 (trigger_id + views.open)
+  - `modal.js` — `/modal-demo` → 모달 열기, **[Update]** views.update / **[Push]** views.push, Submit 처리
 
 새 기능: `handlers/` 에 `export function register(app) { ... }` 추가 후 `app.js` 에서 `registerXXX(app)` 호출.
 
@@ -80,9 +80,11 @@ Request URL은 **`https://복사한주소/slack/events`** 로 통일합니다.
    - **Message Shortcut**: 메시지에 마우스 올리고 **⋮** → **앱에 연결** → **Open Modal** 선택 → 모달이 열리는지 확인.  
    - **Global Shortcut** (API에서 Global로 등록한 경우): Slack 검색 또는 입력창 옆 **⚡** → **Open Modal** 선택 → 모달이 열리는지 확인.
 
-6. **/modal-demo (Opening modals 문서 예시)**  
+6. **/modal-demo (Update / Push)**  
    `/modal-demo` 입력 → "Modal title" 모달이 열리는지 확인.  
-   "What are your hopes and dreams?" 입력 후 **Submit** → 해당 채널에 입력한 내용이 포스트되는지 확인.  
+   **[Update]** 클릭 → 같은 모달 내용이 "Updated modal" + GIF 로 갱신되는지 확인 (`views.update`).  
+   **[Push]** 클릭 → 새 뷰 "Pushed view"가 위에 쌓이는지 확인 (`views.push`). **Close** 로 닫으면 1번 뷰로 복귀.  
+   "What are your hopes and dreams?" 입력 후 **Submit** → 해당 채널에 포스트되는지 확인.  
    (Slash Commands에 `/modal-demo` 추가 필요.)
 
 ---
