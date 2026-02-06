@@ -5,6 +5,7 @@ import { register as registerHello } from "./handlers/hello.js";
 import { register as registerReminder } from "./handlers/reminder.js";
 import { register as registerTicket } from "./handlers/ticket.js";
 import { register as registerShortcut } from "./handlers/shortcut.js";
+import { register as registerModal } from "./handlers/modal.js";
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -17,6 +18,7 @@ registerHello(app);
 registerReminder(app);
 registerTicket(app);
 registerShortcut(app);
+registerModal(app);
 
 const PORT = 3000;
 (async () => {
