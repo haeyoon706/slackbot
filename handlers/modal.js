@@ -1,9 +1,9 @@
 /**
- * Opening modals + Updating & pushing views 문서 예시
- * - /modal-demo → views.open 으로 모달 열기 (1번 뷰)
- * - [Update] 버튼 → views.update 로 현재 모달 내용 갱신
- * - [Push] 버튼 → views.push 로 새 뷰를 위에 쌓음 (닫으면 1번으로 복귀)
- * - Submit → view_1 제출 처리
+ * Opening modals + Updating & pushing views + Listening to views 문서 예시
+ * - /modal-demo → views.open 으로 모달 열기
+ * - [Update] views.update / [Push] views.push
+ * - view_submission: Submit 시 채널 전송 + response_action: 'update' 로 감사 뷰 표시
+ * - view_closed: Pushed 뷰 닫을 때 (notify_on_close) 수신
  */
 export function register(app) {
   // 슬래시 명령 수신 → 3초 이내 trigger_id 로 모달 열기
@@ -123,6 +123,7 @@ export function register(app) {
             callback_id: "view_pushed",
             title: { type: "plain_text", text: "Pushed view" },
             close: { type: "plain_text", text: "Close" },
+            notify_on_close: true, // X 또는 Close 시 view_closed 이벤트 전송
             blocks: pushedBlocks,
           },
         });
@@ -133,11 +134,11 @@ export function register(app) {
     }
   });
 
-  // 모달 제출 (Submit) 시
-  app.view("view_1", async ({ ack, view, client }) => {
-    await ack();
+  // view_submission: 모달 제출 (Submit) 시
+  app.view("view_1", async ({ ack, view, client, body }) => {
     const hopes = view.state.values.input_c?.dreamy_input?.value ?? "";
     const channelId = view.private_metadata;
+
     if (hopes && channelId) {
       try {
         await client.chat.postMessage({
@@ -145,6 +146,34 @@ export function register(app) {
           text: `*Hopes and dreams:*\n${hopes}`,
         });
       } catch (_) {}
+
+      // response_action: 'update' — 제출 후 모달을 "감사" 뷰로 갱신 (닫지 않고)
+      await ack({
+        response_action: "update",
+        view: {
+          type: "modal",
+          callback_id: "view_1",
+          title: { type: "plain_text", text: "Thank you!" },
+          close: { type: "plain_text", text: "Close" },
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "Your submission was successful. 채널에 전송했어요.",
+              },
+            },
+          ],
+        },
+      });
+    } else {
+      await ack();
     }
+  });
+
+  // view_closed: Pushed 뷰에서 X 또는 Close 클릭 시 (notify_on_close: true 필요)
+  app.view({ callback_id: "view_pushed", type: "view_closed" }, async ({ ack, body, logger }) => {
+    await ack();
+    logger.info("view_pushed closed by user:", body.user?.id);
   });
 }
