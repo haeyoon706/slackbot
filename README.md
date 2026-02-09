@@ -12,6 +12,7 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
 | 티켓 모달 | **/ticket** 슬래시 명령 | 이메일 입력 모달 → 검증(ack) 후 채널에 안내 |
 | Open Modal | **Shortcut** (메시지 ⋮ 또는 검색/⚡) | 간단한 모달 열기 |
 | 모달 데모 | **/modal-demo** 슬래시 명령 | 모달 열기 → [Update]/[Push] → Submit 시 `response_action: 'update'` 로 감사 뷰, view_closed 수신 |
+| Select 메뉴 | **/select-demo** 슬래시 명령 | external_select 모달 → `app.options()` 로 고정 목록 전달(DB 없음), 선택 시 채널 전송 |
 
 ## 프로젝트 구조
 
@@ -23,6 +24,7 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
   - `ticket.js` — `/ticket` 모달, 이메일 검증(ack)
   - `shortcut.js` — Shortcut `open_modal` → 모달 열기
   - `modal.js` — `/modal-demo` → 모달 열기, **[Update]** views.update / **[Push]** views.push, Submit 처리
+  - `selectMenu.js` — `/select-demo` → external_select + `app.options()` (고정 목록)
 
 새 기능: `handlers/` 에 `export function register(app) { ... }` 추가 후 `app.js` 에서 `registerXXX(app)` 호출.
 
@@ -47,7 +49,7 @@ Request URL은 **`https://복사한주소/slack/events`** 로 통일합니다.
 | 항목 | 설정 |
 |------|------|
 | **Event Subscriptions** | Enable On, Request URL 등록, **Subscribe to bot events** 에 `message.channels`, `reaction_added` 추가 |
-| **Slash Commands** | `/ticket`, `/modal-demo` (필요 시 `/hello`) 생성, Request URL 동일 |
+| **Slash Commands** | `/ticket`, `/modal-demo`, `/select-demo` (필요 시 `/hello`) 생성, Request URL 동일 |
 | **Interactivity & Shortcuts** | On, Request URL 동일 (버튼·날짜 선택·모달 제출용) |
 | **Shortcuts** | **Create New Shortcut** → Name/Description 입력, **Callback ID**: `open_modal` (Global 또는 Messages 중 선택) |
 | **OAuth & Permissions** | Bot Token Scopes: `chat:write`, `channels:history`, `commands` 등 필요 범위 추가 후 **Reinstall to Workspace** |
@@ -85,6 +87,11 @@ Request URL은 **`https://복사한주소/slack/events`** 로 통일합니다.
    **[Update]** → `views.update` / **[Push]** → `views.push` (닫으면 1번 복귀, `notify_on_close`로 view_closed 수신).  
    **Submit** → 채널 전송 + `response_action: 'update'` 로 "Thank you!" 뷰로 갱신.  
    (Slash Commands에 `/modal-demo` 추가 필요.)
+
+7. **/select-demo (Select menu options)**  
+   `/select-demo` 입력 → "Select demo" 모달에서 드롭다운 열기 → 옵션 A/B/C 표시(고정 목록, `app.options()`).  
+   항목 선택 후 **확인** → 해당 채널에 선택값 전송.  
+   (Slash Commands에 `/select-demo` 추가 필요.)
 
 ---
 
