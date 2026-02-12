@@ -15,6 +15,8 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
 | Select 메뉴   | **/select-demo** 슬래시 명령                 | static_select 모달 → 옵션 A/B/C 선택 후 채널 전송                                                |
 | App Home      | 사이드바에서 **앱 이름** 클릭(홈 탭)         | `app_home_opened` 수신 → `views.publish` 로 사용자별 홈 뷰 표시                                  |
 | Assistant     | **Agents & AI Apps** 사용 시 어시스턴트 열기 | 인사 + 추천 프롬프트, 사용자 메시지에 고정 답장 (LLM 없음)                                       |
+| 점심 메뉴 봇   | **/lunch** 슬래시 명령                       | 메뉴 후보 등록 → 투표 버튼 → 실시간 업데이트 → 룰렛 애니메이션 후 결정                            |
+| 점심 메뉴 봇 2 | **/lunch2** 슬래시 명령                      | 메뉴 4개+시간 선택 → 1인1표 → 시간 종료 후 룰렛 → 최종 발표                                      |
 
 ## 프로젝트 구조
 
@@ -29,6 +31,8 @@ Slack Bolt SDK 기반 봇. 메시지, 슬래시 명령, 리액션, Shortcut, 모
   - `selectMenu.js` — `/select-demo` → static_select 모달, 선택값 채널 전송
   - `home.js` — App Home: `app_home_opened` → `views.publish` 로 홈 탭 뷰 표시
   - `assistant.js` — Assistant: `threadStarted` / `threadContextChanged` / `userMessage` (LLM 없이 구조·UI만)
+  - `lunch.js` — /lunch: 점심 메뉴 후보 등록, 투표, 룰렛으로 결정
+  - `lunch2.js` — /lunch2: 메뉴 4개+시간 선택, 1인1표, 시간 종료 후 룰렛
 
 새 기능: `handlers/` 에 `export function register(app) { ... }` 추가 후 `app.js` 에서 `registerXXX(app)` 호출.
 
@@ -53,7 +57,7 @@ Request URL은 **`https://복사한주소/slack/events`** 로 통일합니다.
 | 항목                               | 설정                                                                                                                                                                                                                                                                                                                  |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Event Subscriptions**            | Enable On, Request URL 등록, **Subscribe to bot events** 에 `message.channels`, `reaction_added`, `app_home_opened` 추가                                                                                                                                                                                              |
-| **Slash Commands**                 | `/ticket`, `/modal-demo`, `/select-demo` (필요 시 `/hello`) 생성, Request URL 동일                                                                                                                                                                                                                                    |
+| **Slash Commands**                 | `/ticket`, `/modal-demo`, `/select-demo`, `/lunch`, `/lunch2` (필요 시 `/hello`) 생성, Request URL 동일                                                                                                                                                                                                                                    |
 | **Interactivity & Shortcuts**      | On, Request URL 동일 (버튼·날짜 선택·모달 제출용)                                                                                                                                                                                                                                                                     |
 | **Shortcuts**                      | **Create New Shortcut** → Name/Description 입력, **Callback ID**: `open_modal` (Global 또는 Messages 중 선택)                                                                                                                                                                                                         |
 | **OAuth & Permissions**            | Bot Token Scopes: `chat:write`, `channels:history`, `commands` 등 필요 범위 추가 후 **Reinstall to Workspace**                                                                                                                                                                                                        |

@@ -10,6 +10,8 @@ import { register as registerSelectMenu } from "./handlers/selectMenu.js";
 import { register as registerHome } from "./handlers/home.js";
 import { register as registerAssistant } from "./handlers/assistant.js";
 import { register as registerWorkflow } from "./handlers/workflow.js";
+import { register as registerLunch } from "./handlers/lunch.js";
+import { register as registerLunch2 } from "./handlers/lunch2.js";
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -27,6 +29,8 @@ registerSelectMenu(app);
 registerHome(app);
 registerAssistant(app);
 registerWorkflow(app);
+registerLunch(app);
+registerLunch2(app);
 
 const PORT = 3000;
 (async () => {
