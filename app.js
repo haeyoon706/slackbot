@@ -12,6 +12,7 @@ import { register as registerAssistant } from "./handlers/assistant.js";
 import { register as registerWorkflow } from "./handlers/workflow.js";
 import { register as registerLunch } from "./handlers/lunch.js";
 import { register as registerLunch2 } from "./handlers/lunch2.js";
+import { register as registerRps } from "./handlers/rps.js";
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -31,6 +32,7 @@ registerAssistant(app);
 registerWorkflow(app);
 registerLunch(app);
 registerLunch2(app);
+registerRps(app);
 
 const PORT = 3000;
 (async () => {
