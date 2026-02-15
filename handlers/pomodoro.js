@@ -3,15 +3,60 @@
  *
  * - /pomodoro [분] → 집중 타이머 시작 (기본 25분)
  * - 25% / 50% / 75% / 100% 진행률 업데이트
- * - 완료 시 알림 메시지 + 휴식 버튼
+ * - 완료 시 알림 메시지 + 오늘의 총 집중량 표시 + 휴식 버튼
  * - 휴식 버튼 → 5분 휴식 타이머
  * - 중단 버튼으로 언제든 취소 가능
+ * - 매일 23:59에 그 날의 집중 시간 요약 (사용한 날만)
  */
 
 const timers = new Map(); // userId → timer state
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// 일별 집중 기록: userId → { date, channelId, sessions: [{ duration, completedAt }] }
+const dailyStats = new Map();
+
+function todayKey() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getUserStats(userId) {
+  const today = todayKey();
+  const stats = dailyStats.get(userId);
+  if (stats && stats.date === today) return stats;
+  // 새 날이면 초기화
+  const newStats = { date: today, channelId: null, sessions: [] };
+  dailyStats.set(userId, newStats);
+  return newStats;
+}
+
+function recordSession(userId, channelId, duration) {
+  const stats = getUserStats(userId);
+  stats.channelId = channelId;
+  stats.sessions.push({
+    duration,
+    completedAt: new Date(),
+  });
+}
+
+function getTotalMinutes(userId) {
+  const stats = getUserStats(userId);
+  return stats.sessions.reduce((sum, s) => sum + s.duration, 0);
+}
+
+function formatTotalTime(minutes) {
+  if (minutes < 60) return `${minutes}분`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
+}
+
+function formatClock(date) {
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 function progressBar(ratio) {
@@ -80,11 +125,87 @@ function buildTimerBlocks(userId, duration, ratio, status) {
   return blocks;
 }
 
+function buildDailySummaryBlocks(userId, stats) {
+  const total = stats.sessions.reduce((sum, s) => sum + s.duration, 0);
+  const count = stats.sessions.length;
+
+  const sessionLines = stats.sessions
+    .map((s, i) => `${i + 1}. ${s.duration}분 집중 ✅  (${formatClock(s.completedAt)})`)
+    .join("\n");
+
+  return [
+    {
+      type: "header",
+      text: { type: "plain_text", text: "📊 오늘의 뽀모도로 요약" },
+    },
+    {
+      type: "context",
+      elements: [{ type: "mrkdwn", text: `${stats.date} — <@${userId}>` }],
+    },
+    { type: "divider" },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `🍅 *총 집중 횟수:* ${count}회\n⏱️ *총 집중 시간:* ${formatTotalTime(total)}`,
+      },
+    },
+    { type: "divider" },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*📋 세션 기록*\n${sessionLines}`,
+      },
+    },
+    {
+      type: "context",
+      elements: [{ type: "mrkdwn", text: "내일도 화이팅! 💪" }],
+    },
+  ];
+}
+
 function clearTimerIntervals(state) {
   for (const id of state.intervals) {
     clearTimeout(id);
   }
   state.intervals = [];
+}
+
+// 매일 23:59에 요약 전송
+function scheduleDailySummary(client) {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(23, 59, 0, 0);
+  if (now >= target) {
+    target.setDate(target.getDate() + 1);
+  }
+  const delay = target.getTime() - now.getTime();
+
+  setTimeout(async () => {
+    await sendDailySummaries(client);
+    scheduleDailySummary(client); // 다음 날 다시 스케줄
+  }, delay);
+}
+
+async function sendDailySummaries(client) {
+  const today = todayKey();
+
+  for (const [userId, stats] of dailyStats.entries()) {
+    if (stats.date !== today || stats.sessions.length === 0 || !stats.channelId) {
+      continue;
+    }
+
+    try {
+      await client.chat.postMessage({
+        channel: stats.channelId,
+        text: `📊 오늘의 뽀모도로 요약 — ${stats.sessions.length}회, ${formatTotalTime(stats.sessions.reduce((s, x) => s + x.duration, 0))}`,
+        blocks: buildDailySummaryBlocks(userId, stats),
+      });
+    } catch (e) {
+      /* 무시 */
+    }
+  }
 }
 
 async function startTimer(client, userId, channelId, messageTs, duration, mode) {
@@ -94,7 +215,7 @@ async function startTimer(client, userId, channelId, messageTs, duration, mode) 
     messageTs,
     userId,
     duration,
-    mode, // 'work' or 'break'
+    mode,
     startTime: Date.now(),
     intervals: [],
   };
@@ -130,8 +251,12 @@ async function startTimer(client, userId, channelId, messageTs, duration, mode) 
         blocks: buildTimerBlocks(userId, duration, 1, "done"),
       });
 
-      // 새 알림 메시지 (노티피케이션 발생)
+      // 집중 모드일 때만 기록 + 총 집중량 표시
       if (mode === "work") {
+        recordSession(userId, channelId, duration);
+        const totalMin = getTotalMinutes(userId);
+        const count = getUserStats(userId).sessions.length;
+
         await client.chat.postMessage({
           channel: channelId,
           text: `🍅 <@${userId}> ${duration}분 집중 완료! 수고했어요!`,
@@ -140,7 +265,14 @@ async function startTimer(client, userId, channelId, messageTs, duration, mode) 
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `🎉 <@${userId}> *${duration}분 집중 완료!* 수고했어요!\n짧은 휴식을 취해보세요.`,
+                text: `🎉 <@${userId}> *${duration}분 집중 완료!* 수고했어요!`,
+              },
+            },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `📊 *오늘의 집중:* ${count}회 · ${formatTotalTime(totalMin)}`,
               },
             },
             {
@@ -214,6 +346,9 @@ async function startTimer(client, userId, channelId, messageTs, duration, mode) 
 }
 
 export function register(app) {
+  // 매일 23:59 요약 스케줄러 시작
+  scheduleDailySummary(app.client);
+
   // /pomodoro [분] → 타이머 시작
   app.command("/pomodoro", async ({ ack, client, command }) => {
     await ack();
